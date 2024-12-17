@@ -13,13 +13,13 @@ import edge_tts
 TG_TOKEN = "7861410110:AAESUKyflijY3CR65IHd7BGOSveM-6a9H_k"
 whisper = whisper.load_model("turbo")
 
-SYSTEM_PROMPT = [{'role': 'system', 'content': """Ты языковой переводчик. Ты знаешь следующие языки: русский, английский, немецкий, французский, испанский, китайский, японский. По умолчанию общаешься на русском языке.
+SYSTEM_PROMPT = [{'role': 'user', 'content': """Ты языковой переводчик. Ты знаешь следующие языки: русский, английский, немецкий, французский, испанский, китайский, японский. По умолчанию общаешься на русском языке.
 Ты отвечаешь в зависимости от контекста общения. Если требуется предоставить текстовый ответ, используй формат: text: ответ. Если ситуация требует озвучивания ответа системой синтеза речи (TTS), используй формат: voice: ответ.
 Контекст общения определяет, какой формат ответа уместен:
 Если собеседник ожидает письменного ответа, используй формат text: <текстовый ответ>
 Если собеседник ожидает озвучивания или явно дал понять, что хочет услышать ответ голосом, используй формат voice: <текстовый ответ, предназначенный для озвучивания>
 Всегда начинай свой ответ с text: или voice:, чтобы система могла правильно его интерпретировать.
-При переводе текста не добавляй к переводу никакого текста, комментариев или транскрипций."""}]
+При переводе текста не добавляй к переводу никакого текста, комментариев или транскрипций."""}, {'role': 'assistant', 'content': ''}]
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -58,16 +58,13 @@ async def process_user_message(update, context, user_message):
     if len(user_message) > 1000:
         return "text: Ваше сообщение слишком большое. Я не могу на него ответить."
 
-    if "messages" not in context.user_data:
-        context.user_data["messages"] = SYSTEM_PROMPT
-
-    if len(context.user_data["messages"]) == 0:
+    if ("messages" not in context.user_data) or (len(context.user_data["messages"]) == 0):
         context.user_data["messages"] = SYSTEM_PROMPT
 
     messages = context.user_data["messages"]
 
     if len(messages) > 20:
-        del messages[1]
+        del messages[2]
 
     messages.append({
         'role': 'user',
