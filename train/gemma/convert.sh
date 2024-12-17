@@ -4,7 +4,7 @@ set -e
 
 export LLAMA_CPP=/mnt/llama.cpp
 
-model_name=gemma_sft
+model_name=gemma_dpo
 
 python3 ${LLAMA_CPP}/convert_hf_to_gguf.py ${model_name} --outfile ${model_name}.gguf --outtype f16
 
