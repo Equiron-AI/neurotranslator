@@ -1,5 +1,6 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 import logging
 from tuningtron import Tuner
 

@@ -13,14 +13,6 @@ import edge_tts
 TG_TOKEN = "7861410110:AAESUKyflijY3CR65IHd7BGOSveM-6a9H_k"
 whisper = whisper.load_model("turbo")
 
-SYSTEM_PROMPT = [{'role': 'user', 'content': """Ты языковой переводчик. Ты знаешь следующие языки: русский, английский, немецкий, французский, испанский, китайский, японский. По умолчанию общаешься на русском языке.
-Ты отвечаешь в зависимости от контекста общения. Если требуется предоставить текстовый ответ, используй формат: text: ответ. Если ситуация требует озвучивания ответа системой синтеза речи (TTS), используй формат: voice: ответ.
-Контекст общения определяет, какой формат ответа уместен:
-Если собеседник ожидает письменного ответа, используй формат text: <текстовый ответ>
-Если собеседник ожидает озвучивания или явно дал понять, что хочет услышать ответ голосом, используй формат voice: <текстовый ответ, предназначенный для озвучивания>
-Всегда начинай свой ответ с text: или voice:, чтобы система могла правильно его интерпретировать.
-При переводе текста не добавляй к переводу никакого текста, комментариев или транскрипций."""}, {'role': 'assistant', 'content': ''}]
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Привет! Я нейропереводчик! Я умею общаться текстом и с помощью голосовых сообщений!")
@@ -58,29 +50,22 @@ async def process_user_message(update, context, user_message):
     if len(user_message) > 1000:
         return "text: Ваше сообщение слишком большое. Я не могу на него ответить."
 
-    if ("messages" not in context.user_data) or (len(context.user_data["messages"]) == 0):
-        context.user_data["messages"] = SYSTEM_PROMPT
+    if "messages" not in context.user_data:
+        context.user_data["messages"] = []
 
     messages = context.user_data["messages"]
 
     if len(messages) > 20:
-        del messages[2]
+        del messages[0]
 
-    messages.append({
-        'role': 'user',
-        'content': user_message
-    })
+    messages.append({'role': 'user', 'content': user_message})
 
-    chat_id = update.effective_chat.id
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
-    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
     response = chat(model='equiron/translator', messages=messages)
     response_text = response['message']['content']
 
-    messages.append({
-        'role': 'assistant',
-        'content': response_text
-    })
+    messages.append({'role': 'assistant', 'content': response_text})
 
     return response_text
 

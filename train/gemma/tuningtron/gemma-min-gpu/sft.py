@@ -7,5 +7,5 @@ from tuningtron import Tuner
 logging.basicConfig(level=logging.INFO)
 os.environ["HF_TOKEN"] = "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"
 
-tuner = Tuner("google/gemma-2-9b-it", enable_deepspeed=False)
-tuner.sft("equiron-ai/translator_sft", "adapter_gemma_sft", rank=128, batch_size=1, gradient_steps=1, learning_rate=1e-4)
+tuner = Tuner("google/gemma-2-9b-it")
+tuner.sft("equiron-ai/translator_sft", "adapter_gemma_sft", rank=128, learning_rate=1e-4)
