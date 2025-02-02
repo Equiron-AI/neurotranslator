@@ -8,4 +8,4 @@ logging.basicConfig(level=logging.INFO)
 os.environ["HF_TOKEN"] = "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"
 
 tuner = Tuner("google/gemma-2-9b-it", enable_deepspeed=False)
-tuner.sft("equiron-ai/translator_sft", "adapter_gemma_sft", rank=128, learning_rate=1e-4)
+tuner.sft("equiron-ai/translator_sft", "adapter_gemma_sft", lora_rank=128, learning_rate=1e-4)
