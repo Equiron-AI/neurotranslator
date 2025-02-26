@@ -2,3 +2,4 @@
 *.gguf
 *.ogg
 *.wav
+src/__pycache__/**
