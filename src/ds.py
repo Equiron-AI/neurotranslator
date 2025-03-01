@@ -1,20 +1,38 @@
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
-from ollama import chat
 from lingua import Language, LanguageDetectorBuilder
 from ffmpeg import FFmpeg
+from openai import OpenAI
 
 import requests
 import whisper
 import tempfile
 import edge_tts
+import os
 
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 TG_TOKEN = "7861410110:AAESUKyflijY3CR65IHd7BGOSveM-6a9H_k"
 whisper = whisper.load_model("turbo")
+deepseek = OpenAI(api_key=os.environ["TRANSLATOR_API_KEY"], base_url="https://api.deepseek.com")
+
+system_prompt = """Ты — языковой переводчик.
+Ты знаешь следующие языки: русский, английский, немецкий, французский, испанский, китайский, японский.
+По умолчанию общаешься на русском.
+Отвечай начиная с "voice:" если собеседник явно хочет услышать ответ голосом.
+Если пользователь просит выполнить перевод, то отвечай как google translate - только перевод без пояснений, комментариев, транскрипций или любой другой дополнительной информации.
+
+Пример вопроса пользователя:
+Скажи мне голосом как по японски будет Спасибо?
+
+Пример корректного ответа:
+voice: ありがとう
+
+Пример недопустимого ответа:
+voice: ありがとう (Arigatō)"""
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["messages"] = [{"role": "system", "content": system_prompt}]
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Привет! Я нейропереводчик! Я умею общаться текстом и с помощью голосовых сообщений!")
 
 
@@ -43,29 +61,27 @@ async def tts(text, lang, file_name):
     # преобразуем текст в аудиофайл в формате wav
     await edge_tts.Communicate(text, voice).save(file_name + ".wav")
     # конвертируем файл в формате wav в формат ogg
-    FFmpeg().option("y").input(file_name + ".wav").output(file_name + ".ogg", {"codec:a": "libopus"}).execute()
+    FFmpeg().option("y").input(file_name + ".wav").output(file_name, {"codec:a": "libopus"}).execute()
 
 
 async def process_user_message(update, context, user_message):
     if len(user_message) > 1000:
         return "text: Ваше сообщение слишком большое. Я не могу на него ответить."
 
-    if "messages" not in context.user_data:
-        context.user_data["messages"] = []
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     messages = context.user_data["messages"]
 
     if len(messages) > 20:
         del messages[0]
 
-    messages.append({'role': 'user', 'content': user_message})
+    messages.append({"role": "user", "content": user_message})
 
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    response = deepseek.chat.completions.create(model="deepseek-chat", messages=messages)
 
-    response = chat(model='equiron/translator', messages=messages)
-    response_text = response['message']['content']
+    response_text = response.choices[0].message.content
 
-    messages.append({'role': 'assistant', 'content': response_text})
+    messages.append({"role": "assistant", "content": response_text})
 
     return response_text
 
@@ -74,12 +90,12 @@ async def process_bot_response(response_text, context, chat_id, message_id):
     if response_text.startswith("voice:"):
         response_text = response_text.replace("voice:", "")
         lang = lang_detect(response_text)
-        await tts(response_text, lang, str(chat_id))
+        voice_file_name = str(chat_id) + ".ogg"
+        await tts(response_text, lang, voice_file_name)
         await context.bot.send_voice(chat_id=chat_id,
-                                     voice=str(chat_id) + ".ogg",
+                                     voice=voice_file_name,
                                      reply_to_message_id=message_id)
     else:
-        response_text = response_text.replace("text:", "")
         await context.bot.send_message(chat_id=chat_id,
                                        text=response_text,
                                        reply_to_message_id=message_id)
