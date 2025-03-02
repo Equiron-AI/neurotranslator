@@ -8,17 +8,17 @@ from trl import DPOConfig, DPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import LoraConfig, get_peft_model
 
+model_path = "./gemma_sft"
 
-model = AutoModelForCausalLM.from_pretrained("google/gemma-2-9b-it", torch_dtype=torch.bfloat16, attn_implementation="eager", device_map="auto")
+model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16, attn_implementation="eager", device_map="auto")
 model.gradient_checkpointing_enable()
-
-tokenizer = AutoTokenizer.from_pretrained("google/gemma-2-9b-it")
+tokenizer = AutoTokenizer.from_pretrained(model_path)
 
 peft_config = LoraConfig(r=128, lora_alpha=128, target_modules="all-linear", task_type="CAUSAL_LM")
 peft_model = get_peft_model(model, peft_config)
 print(peft_model.get_model_status())
 
-dataset = load_dataset("equiron-ai/translator_dpo_v2", split="train")
+dataset = load_dataset("equiron-ai/translator_dpo_v4", split="train")
 
 print("Example choosen dataset row: ")
 print(tokenizer.apply_chat_template(dataset["chosen"][0], tokenize=False))
