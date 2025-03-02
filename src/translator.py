@@ -62,7 +62,7 @@ async def process_user_message(update, context, user_message):
 
     messages.append({"role": "user", "content": user_message})
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-    response_text = chat(model='equiron/translator', messages=messages)['message']['content']
+    response_text = chat(model='equiron/yandex_translator', messages=messages)['message']['content']
     messages.append({"role": "assistant", "content": response_text})
     return response_text
 
