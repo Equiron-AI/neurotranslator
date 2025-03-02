@@ -1,8 +1,8 @@
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
+from ollama import chat
 from lingua import Language, LanguageDetectorBuilder
 from ffmpeg import FFmpeg
-from openai import OpenAI
 
 import requests
 import whisper
@@ -13,8 +13,6 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 TG_TOKEN = "7861410110:AAESUKyflijY3CR65IHd7BGOSveM-6a9H_k"
 whisper = whisper.load_model("turbo")
-deepseek = OpenAI(api_key=os.environ["TRANSLATOR_API_KEY"], base_url="https://api.deepseek.com")
-
 system_prompt = """Ты — языковой переводчик.
 Ты знаешь следующие языки: русский, английский, немецкий, французский, испанский, китайский, японский.
 По умолчанию общаешься на русском.
@@ -32,6 +30,7 @@ voice: ありがとう (Arigatō)"""
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["messages"] = []
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Привет! Я нейропереводчик! Я умею общаться текстом и с помощью голосовых сообщений!")
 
 
@@ -67,8 +66,6 @@ async def process_user_message(update, context, user_message):
     if len(user_message) > 1000:
         return "text: Ваше сообщение слишком большое. Я не могу на него ответить."
 
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-
     if "messages" not in context.user_data:
         context.user_data["messages"] = [{"role": "system", "content": system_prompt}]
 
@@ -78,13 +75,9 @@ async def process_user_message(update, context, user_message):
         del messages[0]
 
     messages.append({"role": "user", "content": user_message})
-
-    response = deepseek.chat.completions.create(model="deepseek-chat", messages=messages, temperature=0)
-
-    response_text = response.choices[0].message.content
-
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    response_text = chat(model='mistral-small:24b-instruct-2501-q4_K_M', messages=messages)['message']['content']
     messages.append({"role": "assistant", "content": response_text})
-
     return response_text
 
 
@@ -98,9 +91,11 @@ async def process_bot_response(response_text, context, chat_id, message_id):
                                      voice=voice_file_name,
                                      reply_to_message_id=message_id)
     else:
-        await context.bot.send_message(chat_id=chat_id,
-                                       text=response_text,
-                                       reply_to_message_id=message_id)
+        response_text = response_text.replace("text:", "")
+        if response_text.strip():
+            await context.bot.send_message(chat_id=chat_id,
+                                           text=response_text,
+                                           reply_to_message_id=message_id)
 
 
 async def process_message(update: Update, context: ContextTypes.DEFAULT_TYPE):

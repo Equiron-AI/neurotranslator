@@ -1,7 +1,5 @@
 #!/bin/bash
 
-ollama rm equiron/translator_gemma
-
-ollama create equiron/translator_gemma
-
-ollama run equiron/translator_gemma
+ollama rm equiron/translator_mistral
+ollama create equiron/translator_mistral
+ollama run equiron/translator_mistral
