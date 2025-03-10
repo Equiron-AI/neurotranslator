@@ -10,13 +10,11 @@ import tempfile
 import edge_tts
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 TG_TOKEN = "7861410110:AAESUKyflijY3CR65IHd7BGOSveM-6a9H_k"
 whisper = whisper.load_model("turbo")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["messages"] = []
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Привет! Я нейропереводчик! Я умею общаться текстом и с помощью голосовых сообщений!")
 
 
@@ -60,10 +58,16 @@ async def process_user_message(update, context, user_message):
     if len(messages) > 20:
         del messages[0]
 
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id,
+                                       action="typing")
+
     messages.append({"role": "user", "content": user_message})
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     response_text = chat(model='equiron/yandex_translator', messages=messages)['message']['content']
+    response_text = response_text.strip() # убираем лишние пробелы если они есть
     messages.append({"role": "assistant", "content": response_text})
+
+    print(str(update.effective_chat.id) + ":" + user_message + "\n" + response_text + "\n") # логируем вопрос и ответ
+    
     return response_text
 
 
@@ -86,9 +90,7 @@ async def process_bot_response(response_text, context, chat_id, message_id):
 
 async def process_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
-    print(update.effective_chat.id, user_message)
     response_text = await process_user_message(update, context, user_message)
-    print(update.effective_chat.id, response_text)
     await process_bot_response(response_text, context, update.effective_chat.id, update.message.message_id)
 
 
@@ -102,9 +104,7 @@ async def process_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = whisper.transcribe(f.name)
         user_message = result["text"]
 
-    print(update.effective_chat.id, user_message)
     response_text = await process_user_message(update, context, user_message)
-    print(update.effective_chat.id, response_text)
     await process_bot_response(response_text, context, update.effective_chat.id, update.message.message_id)
 
 
